@@ -1,0 +1,282 @@
+/* eslint-disable vue/no-parsing-error */
+<template>
+  <div class="sudoku">
+    <div class="row">
+    <h2>Sudoku</h2>
+
+    <strong>{{ formattedTime }} </strong>
+      <select v-model="difficulty" @change="generatePuzzle()">
+        <option
+          v-for="(display, level) in levels" :key="level"
+          :value="level"
+          >
+          {{ display }}
+        </option>
+      </select>
+    </div>
+
+    <div class="grid">
+      <!-- to iterate over the rows and cells-->
+      <div
+        class="row"
+        v-for="(row, rowIndex) in puzzle" :key="rowIndex"
+        >
+        <!-- border-right/bottom will only appear if what is to the right of the : is true, adds 3x3 grid lines -->
+        <!-- original cells (not filled in by user) will be bolded -->
+        <!-- when cell is clicked it will become active -->
+        <div
+          class="cell" :class="{
+            'border-right': colIndex === 2 || colIndex === 5,
+            'border-bottom': rowIndex === 2 || rowIndex === 5,
+            'original': cell.original,
+            'active': activeRow === rowIndex && activeCol === colIndex,
+            'invalid': cell.value && isCellInvalid(rowIndex, colIndex, cell.value)
+            }"
+          v-for="(cell, colIndex) in row" :key="colIndex"
+          @click="setCellActive(rowIndex, colIndex, cell.original)"
+          >
+          <!-- display vvalue of each cell -->
+          {{ cell.value }}
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button
+        type="button"
+        class="btn"
+        v-for="value in Array(9).keys()" :key="value"
+        :disabled="activeRow === -1 || activeCol === -1"
+        @click="setCellValue(value + 1)"
+        >
+        {{ value + 1 }}
+      </button>
+    </div>
+  </div>
+</template>
+
+<script>
+// import sudoku the OBJECT from the parent object in directory
+import { sudoku } from '../JS/sudoku'
+
+export default {
+  name: 'Sudoku',
+  data () {
+    return {
+      // where puzzle is stored
+      puzzle: [],
+      difficulty: 'easy',
+
+      // to track active cell
+      activeRow: -1,
+      activeCol: -1,
+
+      levels: {
+        'easy': 'Easy',
+        'medium': 'Medium',
+        'hard': 'Hard',
+        'very-hard': 'Very Hard',
+        'insane': 'Insane',
+        'inhuman': 'Inhuman'
+      },
+      seconds: 0,
+      timer: null
+    }
+  },
+  computed: {
+    formattedTime () {
+      let min = Math.floor(this.seconds / 60)
+      let sec = this.seconds % 60
+
+      if (min < 10) {
+        min = `0${min}`
+      }
+
+      if (sec < 10) {
+        sec = `0${sec}`
+      }
+
+      return `${min}:${sec}`
+    }
+  },
+  methods: {
+    // get puzzle from imported sudoku library
+    generatePuzzle() {
+      const boardString = sudoku.generate(this.difficulty)
+      // turns board into 9x9 array grid, one array of 9 elements, each element is another array of 9 characters
+      this.puzzle = sudoku.board_string_to_grid(boardString)
+        // turn into an array of arrays of objects from array of array of strings
+        .map(row => {
+          return row.map(cell => {
+            return {
+              // if cell is not a '.' turn into int
+              value: cell !== '.' ? parseInt(cell) : null,
+              // if cell is a number not '.' it is part of the original puzzle
+              original: cell !== '.'
+            }
+          })
+        })
+        this.seconds = 0
+        clearInterval(this.timer)
+        this.timer = setInterval(() => {
+          this.seconds += 1
+        }, 1000)
+    },
+    // select active cell
+    setCellActive (row, col, original) {
+      if (original) {
+        return
+      }
+
+      // deselect cell if selected
+      if (this.activeRow === row && this.activeCol === col) {
+        this.activeRow = -1
+        this.activeCol = -1
+        return
+      }
+
+      // if not an original cell and not currently active, reassign
+      this.activeRow = row
+      this.activeCol = col
+    },
+    setCellValue (value) {
+      this.puzzle[this.activeRow][this.activeCol].value = value
+      this.activeRow = -1,
+      this.activeCol = -1
+
+      if (this.isGameComplete()) {
+        const msg = [
+          'Success!',
+          '',
+          `Difficulty: ${ this.levels[ this.difficulty ]}`,
+          `Time: ${ this.formattedTime }`
+        ]
+
+        alert(msg.join('\n'))
+        this.generatePuzzle()
+      }
+    },
+    isCellInvalid (row, col, value) {
+      if (!value) {
+        return true
+      }
+
+      for (let c = 0; c < 9; c += 1) {
+        if (this.puzzle[row][c].value === value && c !== col) {
+          return true
+        }
+      }
+
+      for (let r = 0; r < 9; r += 1) {
+        if (this.puzzle[r][col].value === value && r != row) {
+          return true
+        }
+      }
+
+      const rowStart = Math.floor(row/3) * 3
+      const colStart = Math.floor(col/3) * 3
+      for (let r = rowStart; r < rowStart + 3; r += 1) {
+        for (let c = colStart; c < colStart + 3; c += 1) {
+          if (this.puzzle[r][c].value === value && !(r === row && c === col)) {
+            return true
+          }
+        }
+      }
+      return false
+    },
+    isGameComplete () {
+      for (let r = 0; r < 9; r += 1) {
+        for (let c = 0; c < 9; c += 1) {
+          if (this.isCellInvalid(r, c, this.puzzle[r][c].value)) {
+            return false
+          }
+        }
+      }
+
+      return true
+    }
+  },
+  // call generatePuzzle once app starts
+  mounted () {
+    this.generatePuzzle()
+  }
+}
+</script>
+
+<style scoped>
+.sudoku {
+  width: 100%;
+  max-width: 420px;
+  margin: 0.5rem auto;
+
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.grid {
+  width: calc(9 * 40px);
+  margin: 0.5rem auto 1rem;
+}
+.row {
+  /* flex handles auto positioning */
+  display: flex;
+  /* will expand height to tallest element, smaller elements will be vertically centered */
+  align-items: center;
+  /* the first element will be all the way right, last element left, all other elements evenly spaced between */
+  justify-content: space-between;
+}
+
+.cell {
+  display: block;
+  width: 40px; 
+  height: 40px;
+  /* border is included into the box */
+  box-sizing: border-box;
+  border: 1px solid #bbb;
+
+  font-size: 24px;
+  /* to vertically center text */
+  line-height: 40px;
+  /* to horizontally align text */
+  text-align: center;
+  cursor: default;
+}
+
+/* adds larger border to 3x3 grids */
+.cell.border-right { 
+  border-right-width: 3px; 
+}
+.cell.border-bottom {
+  border-bottom-width: 3px;
+}
+
+/* bold original numbers */
+.cell.original {
+  font-weight: bold;
+}
+
+/* if cell is not original */
+.cell:not(.original) {
+  cursor: pointer;
+}
+
+/* change active cell */
+.cell.active {
+  background-color: #00c !important;
+  color: #fff;
+}
+
+.cell.invalid {
+  background-color: red;
+  color: white;
+}
+
+.btn {
+  width: 38px;
+  height: 38px;
+  font-size: 24px;
+  cursor: pointer;
+}
+.btn:disabled {
+  cursor: not-allowed;
+}
+</style>
