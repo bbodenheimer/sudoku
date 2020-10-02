@@ -28,6 +28,7 @@
         <!-- original cells (not filled in by user) will be bolded -->
         <!-- when cell is clicked it will become active -->
         <!-- invalid is invalid entry, is only checked if contains value -->
+        <!-- @click sets current row/col to active if it is NOT an original cell -->
         <div
           class="cell" :class="{
             'border-right': colIndex === 2 || colIndex === 5,
@@ -73,12 +74,12 @@ export default {
       puzzle: [],
       difficulty: 'easy',
 
-      // to track active cell
+      // to deactivate selected cell
       activeRow: -1,
       activeCol: -1,
 
       // getting different levels from sudoku.js
-      // bc 'very-hard' contains '-' must have 's
+      // bc 'very-hard' contains '-' must have ''s
       levels: {
         'easy': 'Easy',
         'medium': 'Medium',
@@ -121,7 +122,7 @@ export default {
         .map(row => {
           return row.map(cell => {
             return {
-              // if cell is not a '.' turn into int
+              // if cell is not a '.' turn into int otherwise blank
               value: cell !== '.' ? parseInt(cell) : null,
               // if cell is a number not '.' it is part of the original puzzle
               original: cell !== '.'
@@ -135,7 +136,7 @@ export default {
           this.seconds += 1
         }, 1000)
     },
-    // select active cell
+    // select active cell if not original
     setCellActive (row, col, original) {
       if (original) {
         return
@@ -179,6 +180,7 @@ export default {
 
     // game error checking for duplicate values
     isCellInvalid (row, col, value) {
+      // all cells must have value for game to finish or invalid cells
       if (!value) {
         return true
       }
@@ -197,11 +199,11 @@ export default {
         }
       }
 
-      //checks for duplicate value in 3x3 grid section
-      // to find section cell is in
+      // to find 3x3 section cell is in
       const rowStart = Math.floor(row/3) * 3
       const colStart = Math.floor(col/3) * 3
 
+      //checks for duplicate value in 3x3 grid section
       // start of section +3 for 3x3 grid
       for (let r = rowStart; r < rowStart + 3; r += 1) {
         for (let c = colStart; c < colStart + 3; c += 1) {
@@ -223,7 +225,6 @@ export default {
           }
         }
       }
-
       return true
     }
   },
@@ -239,7 +240,6 @@ export default {
   width: 100%;
   max-width: 420px;
   margin: 0.5rem auto;
-
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -265,7 +265,6 @@ export default {
   /* border is included into the box */
   box-sizing: border-box;
   border: 1px solid #bbb;
-
   font-size: 24px;
   /* to vertically center text */
   line-height: 40px;
@@ -294,14 +293,14 @@ export default {
 
 /* change active cell */
 .cell.active {
-  /* active is more important and will always show */
-  background-color: #00c !important;
+  /* !important == active is more important and will always show over invalid */
+  background-color: lightblue !important;
   color: #fff;
 }
 
 /* when input is wrong */
 .cell.invalid {
-  background-color: red;
+  background-color: indianred;
   color: white;
 }
 
